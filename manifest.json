@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "INIAD課題提出サポーター",
+  "version": "0.5.9",
+  "description": "INIAD MOOCsと外部課題の期限・提出状態をホーム画面で管理します。",
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://moocs.iniad.org/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

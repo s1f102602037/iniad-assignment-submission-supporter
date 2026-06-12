@@ -1,0 +1,17 @@
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.tmp
+
+# Local distribution artifacts
+*.crx
+*.pem
+*.zip
+dist/
+
+# Local screenshots and test output
+screenshots/
+test-results/

@@ -1,0 +1,516 @@
+#iniad-submission-checker {
+  --iniad-checker-accent: #1769aa;
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483647;
+  width: min(340px, calc(100vw - 32px));
+  overflow: hidden;
+  border: 2px solid var(--iniad-checker-accent);
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+  color: #202124;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#iniad-submission-checker.iniad-checker--warning {
+  --iniad-checker-accent: #c62828;
+}
+
+#iniad-submission-checker .iniad-checker__toggle {
+  width: 100%;
+  border: 0;
+  padding: 10px 14px;
+  background: var(--iniad-checker-accent);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  transition: background-color 150ms ease, filter 150ms ease;
+}
+
+#iniad-submission-checker .iniad-checker__toggle:hover {
+  filter: brightness(1.14);
+}
+
+#iniad-submission-checker .iniad-checker__toggle::after {
+  content: "−";
+  float: right;
+}
+
+#iniad-submission-checker.iniad-checker--collapsed .iniad-checker__toggle::after {
+  content: "+";
+}
+
+#iniad-submission-checker .iniad-checker__body {
+  padding: 12px 14px;
+}
+
+#iniad-submission-checker.iniad-checker--collapsed .iniad-checker__body {
+  display: none;
+}
+
+#iniad-submission-checker .iniad-checker__status {
+  margin: 0;
+  font-weight: 700;
+}
+
+#iniad-submission-checker .iniad-checker__deadline-form {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #dddddd;
+}
+
+#iniad-submission-checker .iniad-checker__deadline-form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 700;
+}
+
+#iniad-submission-checker .iniad-checker__deadline-controls {
+  display: flex;
+  gap: 6px;
+}
+
+#iniad-submission-checker .iniad-checker__deadline-controls input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #8a8a8a;
+  border-radius: 5px;
+  padding: 6px;
+  background: #ffffff;
+  color: #202124;
+  font: inherit;
+}
+
+#iniad-submission-checker .iniad-checker__deadline-controls button,
+#iniad-submission-checker .iniad-checker__deadline-delete {
+  border: 1px solid var(--iniad-checker-accent);
+  border-radius: 5px;
+  padding: 6px 9px;
+  background: var(--iniad-checker-accent);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+
+#iniad-submission-checker .iniad-checker__deadline-controls button:hover {
+  filter: brightness(1.14);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+#iniad-submission-checker .iniad-checker__deadline-delete {
+  margin-top: 7px;
+  border-color: #8a8a8a;
+  background: #ffffff;
+  color: #333333;
+}
+
+#iniad-submission-checker .iniad-checker__complete--active:hover {
+  border-color: #1769aa;
+  background: #eaf3fb;
+  color: #0d47a1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+#iniad-submission-checker .iniad-checker__deadline-delete:hover,
+#iniad-submission-checker .iniad-checker__clear:hover {
+  border-color: #c62828;
+  background: #ffebee;
+  color: #b71c1c;
+  box-shadow: 0 2px 6px rgba(183, 28, 28, 0.18);
+  transform: translateY(-1px);
+}
+
+#iniad-submission-checker .iniad-checker__deadline-display {
+  margin: 7px 0 0;
+  color: #555555;
+  font-size: 12px;
+}
+
+#iniad-submission-checker .iniad-checker__complete {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid #1769aa;
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: #1769aa;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+
+#iniad-submission-checker .iniad-checker__complete:not(.iniad-checker__complete--active):hover {
+  filter: brightness(1.14);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+#iniad-submission-checker .iniad-checker__complete--active {
+  border-color: #8a8a8a;
+  background: #ffffff;
+  color: #333333;
+}
+
+#iniad-submission-checker .iniad-checker__history {
+  max-height: 150px;
+  margin: 10px 0;
+  padding-left: 24px;
+  overflow: auto;
+}
+
+#iniad-submission-checker .iniad-checker__clear {
+  border: 1px solid #8a8a8a;
+  border-radius: 5px;
+  padding: 6px 9px;
+  background: #ffffff;
+  color: #333333;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+
+#iniad-submission-checker .iniad-checker__note {
+  margin: 10px 0 0;
+  color: #666666;
+  font-size: 12px;
+}
+
+#iniad-submission-checker .iniad-checker__version {
+  float: right;
+  margin-left: 8px;
+}
+
+#iniad-dashboard-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-sizing: border-box;
+  width: calc(100% - 24px);
+  max-width: calc(100vw - 56px);
+  margin: 20px 0 20px 24px;
+}
+
+.iniad-task-dashboard {
+  box-sizing: border-box;
+  width: 760px;
+  max-width: calc(100vw - 32px);
+  flex: 0 0 760px;
+  margin: 0;
+  overflow: hidden;
+  border: 2px solid #1769aa;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14);
+  color: #202124;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#iniad-external-dashboard {
+  width: auto;
+  min-width: 0;
+  max-width: 420px;
+  flex: 1 1 320px;
+}
+
+.iniad-task-dashboard .iniad-dashboard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #1769aa;
+  color: #ffffff;
+}
+
+.iniad-task-dashboard .iniad-dashboard__header h2 {
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.iniad-task-dashboard .iniad-dashboard__body {
+  padding: 12px 14px;
+}
+
+.iniad-task-dashboard .iniad-dashboard__empty {
+  margin: 0;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  border-left: 5px solid #f9a825;
+  border-radius: 5px;
+  padding: 8px 10px;
+  background: #fffde7;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list li.iniad-deadline--completed {
+  border-left-color: #1769aa;
+  background: #eaf3fb;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list li.iniad-deadline--pending {
+  border-left-color: #f9a825;
+  background: #fffde7;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list li.iniad-deadline--urgent {
+  border-left-color: #c62828;
+  background: #ffebee;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list li.iniad-deadline--expired {
+  border-left-color: #757575;
+  background: #eeeeee;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list a,
+.iniad-task-dashboard .iniad-external__title {
+  overflow: hidden;
+  color: #0d47a1;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.iniad-task-dashboard strong.iniad-external__title {
+  color: #202124;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list time {
+  grid-column: 2;
+  grid-row: 1;
+  white-space: nowrap;
+}
+
+.iniad-task-dashboard .iniad-dashboard__list span {
+  grid-column: 2;
+  color: #555555;
+  font-size: 12px;
+  text-align: right;
+}
+
+#iniad-external-dashboard .iniad-dashboard__header button {
+  border: 1px solid #ffffff;
+  border-radius: 5px;
+  padding: 5px 9px;
+  background: #ffffff;
+  color: #0d47a1;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+
+#iniad-external-dashboard .iniad-dashboard__header button:hover {
+  background: #e3f2fd;
+  color: #08306b;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.22);
+  transform: translateY(-1px);
+}
+
+#iniad-external-dashboard .iniad-external__form {
+  margin-bottom: 12px;
+  border-bottom: 1px solid #dddddd;
+  padding-bottom: 12px;
+}
+
+#iniad-external-dashboard .iniad-external__form label {
+  display: block;
+  margin-bottom: 9px;
+  font-weight: 700;
+}
+
+#iniad-external-dashboard .iniad-external__form input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  border: 1px solid #8a8a8a;
+  border-radius: 5px;
+  padding: 7px;
+  background: #ffffff;
+  color: #202124;
+  font: inherit;
+}
+
+#iniad-external-dashboard .iniad-external__form-error {
+  margin: 0 0 8px;
+  color: #c62828;
+  font-weight: 700;
+}
+
+#iniad-external-dashboard .iniad-external__form-actions,
+#iniad-external-dashboard .iniad-external__item-actions {
+  display: flex;
+  gap: 6px;
+}
+
+#iniad-external-dashboard .iniad-external__form-actions button,
+#iniad-external-dashboard .iniad-external__item-actions button {
+  border: 1px solid #1769aa;
+  border-radius: 5px;
+  padding: 5px 8px;
+  background: #1769aa;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+
+#iniad-external-dashboard .iniad-external__form-actions button:hover,
+#iniad-external-dashboard .iniad-external__item-actions button:hover {
+  filter: brightness(1.14);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+  transform: translateY(-1px);
+}
+
+#iniad-external-dashboard .iniad-external__form-actions .iniad-external__cancel,
+#iniad-external-dashboard .iniad-external__item-actions .iniad-external__edit,
+#iniad-external-dashboard .iniad-external__item-actions .iniad-external__delete {
+  border-color: #8a8a8a;
+  background: #ffffff;
+  color: #333333;
+}
+
+#iniad-external-dashboard .iniad-external__form-actions .iniad-external__cancel:hover,
+#iniad-external-dashboard .iniad-external__item-actions .iniad-external__edit:hover {
+  border-color: #1769aa;
+  background: #eaf3fb;
+  color: #0d47a1;
+  filter: none;
+}
+
+#iniad-external-dashboard .iniad-external__item-actions .iniad-external__delete:hover {
+  border-color: #c62828;
+  background: #ffebee;
+  color: #b71c1c;
+  filter: none;
+}
+
+#iniad-submission-checker button:active,
+#iniad-external-dashboard button:active {
+  box-shadow: none;
+  transform: translateY(1px);
+}
+
+#iniad-submission-checker button:focus-visible,
+#iniad-external-dashboard button:focus-visible {
+  outline: 3px solid rgba(255, 193, 7, 0.85);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #iniad-submission-checker button,
+  #iniad-external-dashboard button {
+    transition: none;
+  }
+}
+#iniad-external-dashboard .iniad-external__item-actions {
+  grid-column: 1 / -1;
+  margin-top: 5px;
+  flex-wrap: wrap;
+}
+
+#iniad-external-dashboard .iniad-dashboard__list li {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+#iniad-external-dashboard .iniad-dashboard__list time,
+#iniad-external-dashboard .iniad-dashboard__list span {
+  grid-column: 1;
+  grid-row: auto;
+  text-align: left;
+}
+
+@media (max-width: 1200px) {
+  #iniad-dashboard-layout {
+    width: auto;
+    flex-direction: column;
+  }
+
+  .iniad-task-dashboard {
+    flex-basis: auto;
+  }
+
+  #iniad-external-dashboard {
+    width: 760px;
+    max-width: calc(100vw - 32px);
+    height: auto;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 600px) {
+  #iniad-dashboard-layout {
+    max-width: none;
+    width: calc(100vw - 24px);
+    margin: 12px;
+  }
+
+  .iniad-task-dashboard {
+    width: calc(100vw - 24px);
+    max-width: none;
+    flex-basis: auto;
+  }
+
+  .iniad-task-dashboard .iniad-dashboard__list li {
+    grid-template-columns: 1fr;
+  }
+
+  .iniad-task-dashboard .iniad-dashboard__list time,
+  .iniad-task-dashboard .iniad-dashboard__list span {
+    grid-column: 1;
+    grid-row: auto;
+    text-align: left;
+  }
+}
