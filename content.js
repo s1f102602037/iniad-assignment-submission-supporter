@@ -9,7 +9,14 @@
   const DASHBOARD_LAYOUT_ID = "iniad-dashboard-layout";
   const BUTTON_MARKER = "data-iniad-submission-listener";
   const SUBMIT_TEXT_PATTERN = /^(提出|提出する|回答を提出|課題を提出|送信)$/;
-  const EXTENSION_VERSION = "0.5.9";
+  const SUCCESS_NOTICE_SELECTOR = [
+    "[role='alert']", "[role='status']", ".alert", ".messages > li",
+    ".notification", ".toast", ".snackbar", ".message.success", ".ui.positive.message"
+  ].join(",");
+  const SUCCESS_TEXT_PATTERN = /^(?:(?:課題|回答)(?:の)?)?提出(?:を記録しました|を受け付けました|が完了しました|しました)[。！!]?$/;
+  const PENDING_SUBMISSION_KEY = "iniadPendingSubmission";
+  const CONFIRMATION_TIMEOUT = 120_000;
+  const EXTENSION_VERSION = "0.5.10";
   const ANSWER_CONTROL_SELECTOR = [
     "input:not([type='button']):not([type='submit']):not([type='reset']):not([type='hidden'])",
     "textarea",
@@ -19,6 +26,90 @@
 
   let refreshTimer;
   let extensionContextActive = true;
+  let pendingSubmission = null;
+  let visibleSuccessNotices = new Set();
+  let submissionQueue = Promise.resolve();
+
+  function queueSubmission(task) {
+    submissionQueue = submissionQueue.catch(() => {}).then(task);
+    runSafely(() => submissionQueue);
+  }
+
+  function savePendingSubmission() {
+    try {
+      if (pendingSubmission) {
+        sessionStorage.setItem(PENDING_SUBMISSION_KEY, JSON.stringify(pendingSubmission));
+      } else {
+        sessionStorage.removeItem(PENDING_SUBMISSION_KEY);
+      }
+    } catch {
+      // In-memory detection still works when session storage is unavailable.
+    }
+  }
+
+  function isPendingSubmissionValid(pending) {
+    const elapsed = Date.now() - new Date(pending?.record?.clickedAt).getTime();
+    return pending?.pageKey === getPageKey()
+      && typeof pending.record?.id === "string"
+      && elapsed >= 0 && elapsed <= CONFIRMATION_TIMEOUT;
+  }
+
+  function findSuccessNotices() {
+    return [...document.querySelectorAll(SUCCESS_NOTICE_SELECTOR)].filter((element) => {
+      if (element.closest(`#${PANEL_ID}, #${DASHBOARD_ID}, #${EXTERNAL_DASHBOARD_ID}`)
+        || !isVisible(element)) {
+        return false;
+      }
+      const copy = element.cloneNode(true);
+      copy.querySelectorAll("button, .close, [aria-hidden='true']").forEach((node) => node.remove());
+      return SUCCESS_TEXT_PATTERN.test(normalizeText(copy.textContent || ""));
+    });
+  }
+
+  function checkSubmissionConfirmation() {
+    const notices = new Set(findSuccessNotices());
+    const appeared = [...notices].some((notice) => !visibleSuccessNotices.has(notice));
+    visibleSuccessNotices = notices;
+    if (appeared) confirmPendingSubmission();
+  }
+
+  function confirmPendingSubmission() {
+    if (!pendingSubmission) return;
+    if (!isPendingSubmissionValid(pendingSubmission)) {
+      pendingSubmission = null;
+      savePendingSubmission();
+      return;
+    }
+    const pending = pendingSubmission;
+    const confirmedAt = new Date().toISOString();
+    pendingSubmission = null;
+    savePendingSubmission();
+    queueSubmission(async () => {
+      const history = await getHistory();
+      const page = history[pending.pageKey];
+      const record = page?.records?.find((item) => item.id === pending.record.id);
+      if (!record) return;
+      record.confirmedAt = confirmedAt;
+      await setLocalStorage({ [STORAGE_KEY]: history });
+      await renderPanel();
+    });
+  }
+
+  function restorePendingSubmission() {
+    try {
+      const pending = JSON.parse(sessionStorage.getItem(PENDING_SUBMISSION_KEY) || "null");
+      if (!isPendingSubmissionValid(pending)) {
+        sessionStorage.removeItem(PENDING_SUBMISSION_KEY);
+        return;
+      }
+      pendingSubmission = pending;
+      // The previous document may have unloaded before its storage write finished.
+      queueSubmission(() => recordSubmission(pending));
+      checkSubmissionConfirmation();
+    } catch {
+      // An invalid or unavailable session entry must not confirm a submission.
+    }
+  }
 
   function isContextInvalidatedError(error) {
     return String(error?.message || error).includes("Extension context invalidated");
@@ -243,8 +334,9 @@
     return deadline;
   }
 
-  function getDeadlineState(deadline, hasSubmissionRecord, isCompleted) {
+  function getDeadlineState(deadline, hasSubmissionRecord, isCompleted, isConfirmed = false) {
     const remaining = new Date(deadline).getTime() - Date.now();
+    const automaticLabel = isConfirmed ? "提出確認済み" : "提出操作あり";
 
     if (remaining < 0) {
       let submissionLabel = "未提出";
@@ -252,7 +344,7 @@
       if (isCompleted) {
         submissionLabel = "提出完了";
       } else if (hasSubmissionRecord) {
-        submissionLabel = "提出操作あり";
+        submissionLabel = automaticLabel;
       }
 
       return {
@@ -271,13 +363,13 @@
     if (remaining <= 24 * 60 * 60 * 1000) {
       return {
         className: "iniad-deadline--urgent",
-        label: hasSubmissionRecord ? "24時間以内・提出操作あり" : "24時間以内・未提出"
+        label: hasSubmissionRecord ? `24時間以内・${automaticLabel}` : "24時間以内・未提出"
       };
     }
 
     return {
       className: "iniad-deadline--pending",
-      label: hasSubmissionRecord ? "提出操作あり" : "未提出"
+      label: hasSubmissionRecord ? automaticLabel : "未提出"
     };
   }
 
@@ -320,22 +412,17 @@
     await setLocalStorage({ [EXTERNAL_STORAGE_KEY]: assignments });
   }
 
-  async function recordSubmission(button) {
-    const pageKey = getPageKey();
+  async function recordSubmission(pending) {
+    const { pageKey, record, title, courseTitle } = pending;
     const history = await getHistory();
     const records = history[pageKey]?.records || [];
-    const buttonText = normalizeText(getButtonText(button) || "提出");
-
-    records.push({
-      clickedAt: new Date().toISOString(),
-      buttonText,
-      answerFingerprint: getAnswerFingerprint()
-    });
+    if (records.some((item) => item.id === record.id)) return;
+    records.push(record);
 
     history[pageKey] = {
       ...history[pageKey],
-      title: getPageTitle(),
-      courseTitle: getCourseTitle() || history[pageKey]?.courseTitle || "",
+      title,
+      courseTitle: courseTitle || history[pageKey]?.courseTitle || "",
       url: pageKey,
       records: records.slice(-20)
     };
@@ -352,7 +439,21 @@
 
       button.setAttribute(BUTTON_MARKER, "true");
       button.addEventListener("click", () => {
-        runSafely(() => recordSubmission(button));
+        visibleSuccessNotices = new Set(findSuccessNotices());
+        const pending = {
+          pageKey: getPageKey(),
+          title: getPageTitle(),
+          courseTitle: getCourseTitle(),
+          record: {
+            id: crypto.randomUUID(),
+            clickedAt: new Date().toISOString(),
+            buttonText: normalizeText(getButtonText(button) || "提出"),
+            answerFingerprint: getAnswerFingerprint()
+          }
+        };
+        pendingSubmission = pending;
+        savePendingSubmission();
+        queueSubmission(() => recordSubmission(pending));
       }, { capture: true });
     }
   }
@@ -404,6 +505,8 @@
     });
 
     panel.querySelector(".iniad-checker__clear").addEventListener("click", async () => {
+      pendingSubmission = null;
+      savePendingSubmission();
       const history = await getHistory();
       const page = history[getPageKey()];
       if (page) {
@@ -480,27 +583,31 @@
   async function renderPanel() {
     const buttons = findSubmissionButtons();
     let panel = document.getElementById(PANEL_ID);
+    const history = await getHistory();
+    const pageKey = getPageKey();
+    const page = history[pageKey] || {};
 
-    if (buttons.length === 0) {
+    if (buttons.length === 0 && !page.records?.length) {
       panel?.remove();
       return;
     }
 
     panel ||= createPanel();
 
-    const history = await getHistory();
-    const pageKey = getPageKey();
-    const page = history[pageKey] || {};
     const detectedCourseTitle = getCourseTitle();
     if (detectedCourseTitle && page.courseTitle !== detectedCourseTitle) {
-      page.courseTitle = detectedCourseTitle;
-      history[pageKey] = page;
-      await setLocalStorage({ [STORAGE_KEY]: history });
+      // Re-read inside the submission queue so a render cannot overwrite a new record.
+      queueSubmission(async () => {
+        const current = await getHistory();
+        if (current[pageKey]?.courseTitle === detectedCourseTitle) return;
+        current[pageKey] = { ...current[pageKey], courseTitle: detectedCourseTitle };
+        await setLocalStorage({ [STORAGE_KEY]: current });
+      });
     }
     const records = page.records || [];
     const latestRecord = records.at(-1);
     const canDetectChanges = Boolean(latestRecord?.answerFingerprint);
-    const hasChangedAnswers = answersHaveChanged(latestRecord);
+    const hasChangedAnswers = buttons.length > 0 && answersHaveChanged(latestRecord);
     const status = panel.querySelector(".iniad-checker__status");
     const historyList = panel.querySelector(".iniad-checker__history");
     const clearButton = panel.querySelector(".iniad-checker__clear");
@@ -509,7 +616,7 @@
     const deadlineDeleteButton = panel.querySelector(".iniad-checker__deadline-delete");
     const deadlineDisplay = panel.querySelector(".iniad-checker__deadline-display");
     const deadlineState = page.deadline
-      ? getDeadlineState(page.deadline, records.length > 0, Boolean(page.completedAt))
+      ? getDeadlineState(page.deadline, records.length > 0, Boolean(page.completedAt), Boolean(latestRecord?.confirmedAt))
       : null;
 
     if (document.activeElement !== deadlineInput) {
@@ -538,16 +645,18 @@
       status.textContent = "注意: このページでは、まだ提出ボタンを押した記録がありません。";
     } else if (hasChangedAnswers) {
       status.textContent = "注意: 提出後に回答が変更されています。変更後は未提出です。";
-    } else if (!canDetectChanges) {
-      status.textContent = `提出記録: ${records.length}回（次回提出から回答変更を監視）`;
     } else {
-      status.textContent = `提出記録: ${records.length}回・提出後の変更なし`;
+      const label = latestRecord.confirmedAt ? "提出確認済み" : "提出操作あり";
+      const detail = latestRecord.confirmedAt
+        ? `成功通知を検知: ${formatDate(latestRecord.confirmedAt)}`
+        : "成功通知は未確認です";
+      status.textContent = `${label}（${detail}）${canDetectChanges ? "" : "・次回提出から回答変更を監視"}`;
     }
 
     historyList.replaceChildren();
     for (const record of [...records].reverse()) {
       const item = document.createElement("li");
-      item.textContent = formatDate(record.clickedAt);
+      item.textContent = `${formatDate(record.clickedAt)}・${record.confirmedAt ? "提出確認済み" : "提出操作あり"}`;
       historyList.append(item);
     }
 
@@ -777,7 +886,8 @@
       const state = getDeadlineState(
         task.deadline,
         records.length > 0,
-        Boolean(task.completedAt)
+        Boolean(task.completedAt),
+        Boolean(records.at(-1)?.confirmedAt)
       );
       const item = document.createElement("li");
       item.className = state.className;
@@ -914,6 +1024,10 @@
   }
 
   function initialize() {
+    // The MAIN-world bridge emits only the recognized answer-save alert signal.
+    document.addEventListener("iniad-moocs-answers-saved", () => {
+      if (extensionContextActive) confirmPendingSubmission();
+    });
     window.addEventListener("unhandledrejection", (event) => {
       if (isContextInvalidatedError(event.reason)) {
         extensionContextActive = false;
@@ -922,6 +1036,7 @@
     });
 
     attachButtonListeners();
+    restorePendingSubmission();
     runSafely(renderPanel);
     runSafely(renderDashboard);
     runSafely(renderExternalDashboard);
@@ -968,12 +1083,16 @@
       });
 
       if (hasPageMutation) {
+        checkSubmissionConfirmation();
         scheduleRefresh();
       }
     });
     observer.observe(document.documentElement, {
       childList: true,
-      subtree: true
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["class", "style", "hidden", "role"]
     });
   }
 
